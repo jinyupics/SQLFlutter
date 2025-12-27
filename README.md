@@ -17,18 +17,25 @@ Think of it like Google Sheets formulas:
 | "submit_form"  | =IF(A2="submit_form", "/dashboard", B1) |
 ```
 
-In SQL terms:
+In SQL terms, we simply have a routing table:
 
 ```sql
--- The current route is derived from user actions and conditions
-SELECT
-  CASE
-    WHEN last_action = 'click_login' THEN '/login'
-    WHEN last_action = 'submit_form' AND is_authenticated = 1 THEN '/dashboard'
-    WHEN last_action = 'logout' THEN '/'
-    ELSE current_route
-  END AS route
-FROM app_state
+CREATE TABLE routing (
+  id INTEGER PRIMARY KEY,
+  current_screen TEXT NOT NULL
+);
+
+-- That's it. One row, one truth.
+SELECT current_screen FROM routing WHERE id = 1;
+-- Result: '/dashboard'
 ```
+
+When a user action happens, we update the table:
+
+```sql
+UPDATE routing SET current_screen = '/settings' WHERE id = 1;
+```
+
+The UI listens to this table. The screen you're on is just a `SELECT` away. No navigation stack, no router configuration, no state management - just data in a table.
 
 Just like a spreadsheet cell updates automatically when its dependencies change, your route is a **computed value** from your data. No imperative `navigator.push()` - the route is simply what the SQL says it should be.
