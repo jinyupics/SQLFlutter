@@ -150,40 +150,40 @@ Why add layers that just pass data through? The database already does the job.
 
 ---
 
-## 愿景：像写Excel一样写Flutter
+## Vision: Write Flutter Like You Write Excel
 
-### 当前的问题
+### The Problem Today
 
-传统Drift写法需要太多步骤：
+Traditional Drift requires too many steps:
 
-| 步骤 | 传统 Drift |
-|------|-----------|
-| 1 | 定义Table类 |
-| 2 | 运行build_runner生成代码 |
-| 3 | 写DAO方法 |
-| 4 | 用StreamBuilder包装 |
-| 5 | 处理async/await |
+| Step | Traditional Drift |
+|------|-------------------|
+| 1 | Define Table classes |
+| 2 | Run build_runner to generate code |
+| 3 | Write DAO methods |
+| 4 | Wrap with StreamBuilder |
+| 5 | Handle async/await |
 
-**5步才能显示一个数据。太重了。**
+**5 steps just to display one piece of data. Too heavy.**
 
-### 我们想要的
+### What We Want
 
 ```dart
-Text("共 ${sql.watch('SELECT COUNT(*) FROM tasks')} 个任务")
+Text("Total: ${sql.watch('SELECT COUNT(*) FROM tasks')} tasks")
 ```
 
-**1步。完事。**
+**1 step. Done.**
 
-就像Excel公式一样 —— 写什么得什么，数据变了自动刷新。
+Just like Excel formulas — write what you need, data changes, UI refreshes automatically.
 
-### 理想的API
+### The Ideal API
 
-| 方法 | 用途 | 响应式 |
-|------|------|--------|
-| `sql.watch()` | 查询数据 | ✓ 自动刷新 |
-| `sql.run()` | 增删改 | ✗ 执行一次 |
+| Method | Purpose | Reactive |
+|--------|---------|----------|
+| `sql.watch()` | Query data | ✓ Auto-refresh |
+| `sql.run()` | Insert/Update/Delete | ✗ Execute once |
 
-### 完整示例
+### Full Example
 
 ```dart
 class TaskListPage extends StatelessWidget {
@@ -193,11 +193,11 @@ class TaskListPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // 标题
-        Text("${sql.watch('SELECT name FROM users WHERE id = $userId')} 的任务"),
-        Text("共 ${sql.watch('SELECT COUNT(*) FROM tasks WHERE user_id = $userId')} 项"),
+        // Header
+        Text("${sql.watch('SELECT name FROM users WHERE id = $userId')}'s Tasks"),
+        Text("Total: ${sql.watch('SELECT COUNT(*) FROM tasks WHERE user_id = $userId')} items"),
 
-        // 列表
+        // List
         Expanded(
           child: ListView(
             children: [
@@ -215,10 +215,10 @@ class TaskListPage extends StatelessWidget {
           ),
         ),
 
-        // 添加按钮
+        // Add button
         ElevatedButton(
-          onPressed: () => sql.run('INSERT INTO tasks (user_id, title) VALUES ($userId, "新任务")'),
-          child: Text("添加"),
+          onPressed: () => sql.run('INSERT INTO tasks (user_id, title) VALUES ($userId, "New Task")'),
+          child: Text("Add"),
         ),
       ],
     );
@@ -226,45 +226,45 @@ class TaskListPage extends StatelessWidget {
 }
 ```
 
-### 效果
+### Result
 
 ```
 ┌─────────────────────────────────────────────┐
-│  张三 的任务                                 │
-│  共 5 项                                     │
+│  John's Tasks                               │
+│  Total: 5 items                             │
 ├─────────────────────────────────────────────┤
 │                                             │
-│  ☐ 买牛奶                                   │
+│  ☐ Buy milk                                 │
 │    2024-01-15                               │
 │                                             │
-│  ☑ 给妈妈打电话                              │
+│  ☑ Call mom                                 │
 │    2024-01-14                               │
 │                                             │
-│  ☐ 完成报告                                  │
+│  ☐ Finish report                            │
 │    2024-01-16                               │
 │                                             │
-│  ☐ 预约牙医                                  │
+│  ☐ Book dentist                             │
 │    2024-01-20                               │
 │                                             │
-│  ☑ 交水电费                                  │
+│  ☑ Pay bills                                │
 │    2024-01-13                               │
 │                                             │
 ├─────────────────────────────────────────────┤
-│              [ ＋ 添加 ]                     │
+│              [ ＋ Add ]                      │
 └─────────────────────────────────────────────┘
 ```
 
-**交互：**
-- 点击 ☐ → `sql.run(UPDATE...)` → 自动变成 ☑
-- 点击 [添加] → `sql.run(INSERT...)` → 列表自动多一行，"共 6 项"
-- 点击某行 → 路由表更新 → 自动跳转详情页
+**Interactions:**
+- Tap ☐ → `sql.run(UPDATE...)` → Automatically becomes ☑
+- Tap [Add] → `sql.run(INSERT...)` → List grows, "Total: 6 items"
+- Tap a row → Routing table updates → Navigates to detail page
 
-**全部自动刷新，零 setState，零 StreamBuilder。**
+**Everything auto-refreshes. Zero setState. Zero StreamBuilder.**
 
-### 核心理念
+### Core Philosophy
 
-> SQL查询像读变量一样简单。
+> SQL queries as simple as reading a variable.
 >
-> 写应用像写Excel一样自然。
+> Writing apps as natural as writing Excel.
 
-这就是SQLFlutter想要实现的未来。
+This is the future SQLFlutter aims to build.
