@@ -147,3 +147,124 @@ That's it. No services. No models. No repositories. No DTOs. No mappers.
 - **The database is your repository** - it already knows how to persist and retrieve
 
 Why add layers that just pass data through? The database already does the job.
+
+---
+
+## Vision: Write Flutter Like You Write Excel
+
+### The Problem Today
+
+Traditional Drift requires too many steps:
+
+| Step | Traditional Drift |
+|------|-------------------|
+| 1 | Define Table classes |
+| 2 | Run build_runner to generate code |
+| 3 | Write DAO methods |
+| 4 | Wrap with StreamBuilder |
+| 5 | Handle async/await |
+
+**5 steps just to display one piece of data. Too heavy.**
+
+### What We Want
+
+```dart
+Text("Total: ${sql.watch('SELECT COUNT(*) FROM tasks')} tasks")
+```
+
+**1 step. Done.**
+
+Just like Excel formulas — write what you need, data changes, UI refreshes automatically.
+
+### The Ideal API
+
+| Method | Purpose | Reactive |
+|--------|---------|----------|
+| `sql.watch()` | Query data | ✓ Auto-refresh |
+| `sql.run()` | Insert/Update/Delete | ✗ Execute once |
+
+### Full Example
+
+```dart
+class TaskListPage extends StatelessWidget {
+  final int userId;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Header
+        Text("${sql.watch('SELECT name FROM users WHERE id = $userId')}'s Tasks"),
+        Text("Total: ${sql.watch('SELECT COUNT(*) FROM tasks WHERE user_id = $userId')} items"),
+
+        // List
+        Expanded(
+          child: ListView(
+            children: [
+              for (var task in sql.watch('SELECT * FROM tasks WHERE user_id = $userId ORDER BY due_date'))
+                ListTile(
+                  leading: Checkbox(
+                    value: task.done == 1,
+                    onChanged: (_) => sql.run('UPDATE tasks SET done = 1 - done WHERE id = ${task.id}'),
+                  ),
+                  title: Text(task.title),
+                  subtitle: Text("${task.dueDate}"),
+                  onTap: () => sql.run('UPDATE routing SET current_screen = "/task/${task.id}"'),
+                ),
+            ],
+          ),
+        ),
+
+        // Add button
+        ElevatedButton(
+          onPressed: () => sql.run('INSERT INTO tasks (user_id, title) VALUES ($userId, "New Task")'),
+          child: Text("Add"),
+        ),
+      ],
+    );
+  }
+}
+```
+
+### Result
+
+```
+┌─────────────────────────────────────────────┐
+│  John's Tasks                               │
+│  Total: 5 items                             │
+├─────────────────────────────────────────────┤
+│                                             │
+│  ☐ Buy milk                                 │
+│    2024-01-15                               │
+│                                             │
+│  ☑ Call mom                                 │
+│    2024-01-14                               │
+│                                             │
+│  ☐ Finish report                            │
+│    2024-01-16                               │
+│                                             │
+│  ☐ Book dentist                             │
+│    2024-01-20                               │
+│                                             │
+│  ☑ Pay bills                                │
+│    2024-01-13                               │
+│                                             │
+├─────────────────────────────────────────────┤
+│              [ ＋ Add ]                      │
+└─────────────────────────────────────────────┘
+```
+
+**Interactions:**
+- Tap ☐ → `sql.run(UPDATE...)` → Automatically becomes ☑
+- Tap [Add] → `sql.run(INSERT...)` → List grows, "Total: 6 items"
+- Tap a row → Routing table updates → Navigates to detail page
+
+**Everything auto-refreshes. Zero setState. Zero StreamBuilder.**
+
+### Core Philosophy
+
+> SQL queries as simple as reading a variable.
+>
+> Writing apps as natural as writing Excel.
+
+This is the future SQLFlutter aims to build.
