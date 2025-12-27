@@ -147,3 +147,124 @@ That's it. No services. No models. No repositories. No DTOs. No mappers.
 - **The database is your repository** - it already knows how to persist and retrieve
 
 Why add layers that just pass data through? The database already does the job.
+
+---
+
+## 愿景：像写Excel一样写Flutter
+
+### 当前的问题
+
+传统Drift写法需要太多步骤：
+
+| 步骤 | 传统 Drift |
+|------|-----------|
+| 1 | 定义Table类 |
+| 2 | 运行build_runner生成代码 |
+| 3 | 写DAO方法 |
+| 4 | 用StreamBuilder包装 |
+| 5 | 处理async/await |
+
+**5步才能显示一个数据。太重了。**
+
+### 我们想要的
+
+```dart
+Text("共 ${sql.watch('SELECT COUNT(*) FROM tasks')} 个任务")
+```
+
+**1步。完事。**
+
+就像Excel公式一样 —— 写什么得什么，数据变了自动刷新。
+
+### 理想的API
+
+| 方法 | 用途 | 响应式 |
+|------|------|--------|
+| `sql.watch()` | 查询数据 | ✓ 自动刷新 |
+| `sql.run()` | 增删改 | ✗ 执行一次 |
+
+### 完整示例
+
+```dart
+class TaskListPage extends StatelessWidget {
+  final int userId;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // 标题
+        Text("${sql.watch('SELECT name FROM users WHERE id = $userId')} 的任务"),
+        Text("共 ${sql.watch('SELECT COUNT(*) FROM tasks WHERE user_id = $userId')} 项"),
+
+        // 列表
+        Expanded(
+          child: ListView(
+            children: [
+              for (var task in sql.watch('SELECT * FROM tasks WHERE user_id = $userId ORDER BY due_date'))
+                ListTile(
+                  leading: Checkbox(
+                    value: task.done == 1,
+                    onChanged: (_) => sql.run('UPDATE tasks SET done = 1 - done WHERE id = ${task.id}'),
+                  ),
+                  title: Text(task.title),
+                  subtitle: Text("${task.dueDate}"),
+                  onTap: () => sql.run('UPDATE routing SET current_screen = "/task/${task.id}"'),
+                ),
+            ],
+          ),
+        ),
+
+        // 添加按钮
+        ElevatedButton(
+          onPressed: () => sql.run('INSERT INTO tasks (user_id, title) VALUES ($userId, "新任务")'),
+          child: Text("添加"),
+        ),
+      ],
+    );
+  }
+}
+```
+
+### 效果
+
+```
+┌─────────────────────────────────────────────┐
+│  张三 的任务                                 │
+│  共 5 项                                     │
+├─────────────────────────────────────────────┤
+│                                             │
+│  ☐ 买牛奶                                   │
+│    2024-01-15                               │
+│                                             │
+│  ☑ 给妈妈打电话                              │
+│    2024-01-14                               │
+│                                             │
+│  ☐ 完成报告                                  │
+│    2024-01-16                               │
+│                                             │
+│  ☐ 预约牙医                                  │
+│    2024-01-20                               │
+│                                             │
+│  ☑ 交水电费                                  │
+│    2024-01-13                               │
+│                                             │
+├─────────────────────────────────────────────┤
+│              [ ＋ 添加 ]                     │
+└─────────────────────────────────────────────┘
+```
+
+**交互：**
+- 点击 ☐ → `sql.run(UPDATE...)` → 自动变成 ☑
+- 点击 [添加] → `sql.run(INSERT...)` → 列表自动多一行，"共 6 项"
+- 点击某行 → 路由表更新 → 自动跳转详情页
+
+**全部自动刷新，零 setState，零 StreamBuilder。**
+
+### 核心理念
+
+> SQL查询像读变量一样简单。
+>
+> 写应用像写Excel一样自然。
+
+这就是SQLFlutter想要实现的未来。
