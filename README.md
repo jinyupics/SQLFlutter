@@ -125,3 +125,25 @@ This means:
 - UI doesn't care what triggered the data change
 - Testing is trivial: insert data, assert UI; trigger action, assert database
 - Time travel / undo: just restore previous row states
+
+## No Service Layer. No Model Layer.
+
+Traditional architecture:
+```
+Action → Controller → Service → Repository → Model → Database
+                                                         ↓
+UI ← ViewModel ← UseCase ← Service ← Repository ← Model ←
+```
+
+SQLFlutter:
+```
+Action → Database → UI
+```
+
+That's it. No services. No models. No repositories. No DTOs. No mappers.
+
+- **Tables are your models** - the schema defines the shape of your data
+- **SQL is your service layer** - queries contain the business logic
+- **The database is your repository** - it already knows how to persist and retrieve
+
+Why add layers that just pass data through? The database already does the job.
