@@ -77,3 +77,51 @@ Each widget binds to a query. When data changes, the widget updates. No `setStat
 ```
 
 The entire UI is a reflection of the database. SQL is the single source of truth.
+
+## User Actions = Upserts, Not New States
+
+User actions should always be converted to **upserting** existing or new tables - never to creating new states.
+
+```sql
+-- User clicks "Add Task" button
+INSERT INTO tasks (id, title, user_id, completed)
+VALUES (uuid(), 'New task', 1, 0);
+
+-- User toggles a task complete
+UPDATE tasks SET completed = 1 WHERE id = 42;
+
+-- User updates their profile (upsert pattern)
+INSERT INTO users (id, name, email) VALUES (1, 'John', 'john@email.com')
+ON CONFLICT(id) DO UPDATE SET name = excluded.name, email = excluded.email;
+
+-- User navigates to settings
+UPDATE routing SET current_screen = '/settings' WHERE id = 1;
+```
+
+Every user interaction is an `INSERT`, `UPDATE`, or `UPSERT`. That's it.
+
+## Decoupled Architecture
+
+**DB → UI** and **Action → DB** are completely decoupled:
+
+```
+┌─────────────┐       ┌─────────────┐       ┌─────────────┐
+│   Action    │ ───►  │  Database   │ ───►  │     UI      │
+│  (Upsert)   │       │  (Tables)   │       │  (Queries)  │
+└─────────────┘       └─────────────┘       └─────────────┘
+                            │
+                            ▼
+                      Single Source
+                       of Truth
+```
+
+- **Action → DB**: User actions write to the database (INSERT/UPDATE)
+- **DB → UI**: UI reads from the database (SELECT)
+
+They don't know about each other. The database is the only connection between them.
+
+This means:
+- Actions don't care how the UI will render
+- UI doesn't care what triggered the data change
+- Testing is trivial: insert data, assert UI; trigger action, assert database
+- Time travel / undo: just restore previous row states
